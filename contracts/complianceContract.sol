@@ -1,61 +1,52 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
-import "./PharmaTracCore.sol";
+import "./Entity.sol";
 
-contract Emergency {
-    enum ResolutionStatus { Open, InProgress, Resolved }
+contract Compliance {
+    enum ComplianceStatus { Approved, Pending, Rejected }
     
-    struct EmergencyRecall {
+    struct ComplianceRecord {
         uint256 batchId;
-        address triggeredBy;
-        string reason;
+        address auditor;
+        string reportURI;
         uint256 timestamp;
-        ResolutionStatus resolutionStatus;
+        ComplianceStatus status;
     }
     
-    mapping(uint256 => EmergencyRecall) public emergencyRecalls;
-    mapping(uint256 => bool) public hasEmergencyRecall;
+    mapping(uint256 => ComplianceRecord) public complianceRecords;
+    mapping(uint256 => bool) public hasComplianceRecord;
     Entity public entityContract;
     
-    event RecallInitiated(
+    event ComplianceRecorded(
         uint256 indexed batchId,
-        address indexed triggeredBy,
-        string reason,
-        ResolutionStatus resolutionStatus
+        address indexed auditor,
+        string reportURI,
+        ComplianceStatus status
     );
     
-    event RecallStatusUpdated(
+    event ComplianceStatusUpdated(
         uint256 indexed batchId,
-        ResolutionStatus newStatus,
+        ComplianceStatus newStatus,
         address updatedBy
     );
-    
-    modifier onlyAuthorizedEntity() {
-        Entity.Role role = entityContract.getEntityRole(msg.sender);
-        require(
-            role == Entity.Role.Regulator || role == Entity.Role.Manufacturer,
-            "Emergency: Only regulators or manufacturers can initiate recalls"
-        );
-        _;
-    }
     
     modifier onlyRegulator() {
         require(
             entityContract.getEntityRole(msg.sender) == Entity.Role.Regulator,
-            "Emergency: Only regulators can update recall status"
+            "Compliance: Only regulators can manage compliance records"
         );
         _;
     }
     
     modifier onlyActiveEntity() {
         (, , bool active, , ) = entityContract.entities(msg.sender);
-        require(active, "Emergency: Entity is not active");
+        require(active, "Compliance: Entity is not active");
         _;
     }
     
-    modifier batchHasEmergencyRecall(uint256 batchId) {
-        require(hasEmergencyRecall[batchId], "Emergency: No emergency recall exists for this batch");
+    modifier batchHasComplianceRecord(uint256 batchId) {
+        require(hasComplianceRecord[batchId], "Compliance: No compliance record exists for this batch");
         _;
     }
     
@@ -63,59 +54,60 @@ contract Emergency {
         entityContract = Entity(_entityAddress);
     }
     
-    function initiateRecall(
+    function recordCompliance(
         uint256 batchId,
-        string memory reason
-    ) external onlyAuthorizedEntity onlyActiveEntity {
-        require(batchId > 0, "Emergency: Invalid batch ID");
-        require(!hasEmergencyRecall[batchId], "Emergency: Recall already initiated for this batch");
+        string memory reportURI,
+        ComplianceStatus status
+    ) external onlyRegulator onlyActiveEntity {
+        require(batchId > 0, "Compliance: Invalid batch ID");
         
-        emergencyRecalls[batchId] = EmergencyRecall({
+        complianceRecords[batchId] = ComplianceRecord({
             batchId: batchId,
-            triggeredBy: msg.sender,
-            reason: reason,
+            auditor: msg.sender,
+            reportURI: reportURI,
             timestamp: block.timestamp,
-            resolutionStatus: ResolutionStatus.Open
+            status: status
         });
         
-        hasEmergencyRecall[batchId] = true;
+        hasComplianceRecord[batchId] = true;
         
-        emit RecallInitiated(
+        emit ComplianceRecorded(
             batchId,
             msg.sender,
-            reason,
-            ResolutionStatus.Open
+            reportURI,
+            status
         );
     }
     
-    function updateRecallStatus(
+    function updateComplianceStatus(
         uint256 batchId,
-        ResolutionStatus newStatus
-    ) external onlyRegulator onlyActiveEntity batchHasEmergencyRecall(batchId) {
-        emergencyRecalls[batchId].resolutionStatus = newStatus;
+        ComplianceStatus newStatus
+    ) external onlyRegulator onlyActiveEntity batchHasComplianceRecord(batchId) {
+        complianceRecords[batchId].status = newStatus;
+        complianceRecords[batchId].timestamp = block.timestamp;
         
-        emit RecallStatusUpdated(
+        emit ComplianceStatusUpdated(
             batchId,
             newStatus,
             msg.sender
         );
     }
     
-    function getEmergencyRecall(uint256 batchId) 
+    function getComplianceRecord(uint256 batchId) 
         external 
         view 
-        batchHasEmergencyRecall(batchId) 
-        returns (EmergencyRecall memory) 
+        batchHasComplianceRecord(batchId) 
+        returns (ComplianceRecord memory) 
     {
-        return emergencyRecalls[batchId];
+        return complianceRecords[batchId];
     }
     
-    function getRecallStatus(uint256 batchId) 
+    function getComplianceStatus(uint256 batchId) 
         external 
         view 
-        batchHasEmergencyRecall(batchId) 
-        returns (ResolutionStatus) 
+        batchHasComplianceRecord(batchId) 
+        returns (ComplianceStatus) 
     {
-        return emergencyRecalls[batchId].resolutionStatus;
+        return complianceRecords[batchId].status;
     }
 }
