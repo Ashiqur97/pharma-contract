@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Drug} from "./drugContract.sol";
+import {DrugBatch} from "./drugContract.sol";
 import {DrugSupplyChain} from "./supplychaincontract.sol";
 import {Compliance} from "./complianceContract.sol";
 import {Emergency} from "./emergencyContract.sol";
@@ -27,7 +27,7 @@ contract PharmaTracCore is Ownable {
     mapping(address => Entity) public entities;
     mapping(address => bool) public authorizedContracts;
 
-    Drug public drugContract;
+    DrugBatch public drugContract;
     DrugSupplyChain public supplychaincontract;
     Compliance public complianceContract;
     Emergency public emergencyContract;
@@ -150,7 +150,7 @@ contract PharmaTracCore is Ownable {
     }
 
     function setDrugContract(address _drugContract) external onlyOwner {
-        drugContract = Drug(_drugContract);
+        drugContract = DrugBatch(_drugContract);
     }
 
     function setSupplyChainContract(

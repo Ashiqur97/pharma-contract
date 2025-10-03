@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import "./Entity.sol";
+import "./PharmaTracCore.sol";
 
 contract DrugBatch {
     enum BatchStatus { Active, Recalled, Expired, Quarantined }
@@ -17,7 +17,7 @@ contract DrugBatch {
     
     mapping(uint256 => Batch) public batches;
     uint256 public batchCounter;
-    Entity public entityContract;
+    PharmaTracCore public entityContract;
     
     event BatchCreated(
         uint256 indexed batchId,
@@ -35,7 +35,7 @@ contract DrugBatch {
     
     modifier onlyManufacturer() {
         require(
-            entityContract.getEntityRole(msg.sender) == Entity.Role.Manufacturer,
+            entityContract.getEntityRole(msg.sender) == PharmaTracCore.Role.Manufacturer,
             "Only manufacturers can create batches"
         );
         _;
@@ -43,7 +43,7 @@ contract DrugBatch {
     
     modifier onlyRegulator() {
         require(
-            entityContract.getEntityRole(msg.sender) == Entity.Role.Regulator,
+            entityContract.getEntityRole(msg.sender) == PharmaTracCore.Role.Regulator,
             "Only regulators can update batch status"
         );
         _;
@@ -57,7 +57,7 @@ contract DrugBatch {
     }
     
     constructor(address _entityAddress) {
-        entityContract = Entity(_entityAddress);
+        entityContract = PharmaTracCore(_entityAddress);
     }
     
     function createBatch(
